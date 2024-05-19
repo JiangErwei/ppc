@@ -17,5 +17,7 @@ add_executable(ppc
         shortcut_v3.cpp
 #        demo.cpp
         vector_instructions.cpp
+        shortcut_v3-1.cpp
+        memory_alignment.cpp
         # demo.cpp
 )
