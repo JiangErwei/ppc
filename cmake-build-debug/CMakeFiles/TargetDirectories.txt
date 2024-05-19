@@ -1,3 +1,0 @@
-/Users/suyi/CLionProjects/ppc/cmake-build-debug/CMakeFiles/ppc.dir
-/Users/suyi/CLionProjects/ppc/cmake-build-debug/CMakeFiles/edit_cache.dir
-/Users/suyi/CLionProjects/ppc/cmake-build-debug/CMakeFiles/rebuild_cache.dir
