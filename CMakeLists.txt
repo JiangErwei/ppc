@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.28)
+cmake_minimum_required(VERSION 3.21)
 project(ppc)
 
 set(CMAKE_CXX_STANDARD 17)
@@ -14,7 +14,7 @@ add_executable(ppc
 #        shortcut_v0.cpp
 #        shortcut_v1.cpp
 #        shortcut_v2.cpp
-#        shortcut_v3.cpp
+        shortcut_v3.cpp
 #        demo.cpp
         vector_instructions.cpp
         # demo.cpp
