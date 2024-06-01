@@ -17,13 +17,12 @@ typedef float float8_t __attribute__ ((vector_size(8 * sizeof(float))));
 
 constexpr float inf = std::numeric_limits<float>::infinity();
 
-//constexpr float8_t f8inf{
-//    inf, inf, inf, inf, inf, inf, inf, inf
-//};
 
 void step_trans(float *r, const float *d, size_t n); // 保留用于对比测试
 
 void step_trans_ilp_omp(float *r, const float *d, size_t n);
+
+void step_trans_simd_omp(float *r, const float *d, size_t n);
 
 
 // 计时函数
@@ -35,25 +34,45 @@ inline void measure_time(const std::string &func_name, const std::function<void(
     std::cout << func_name << " elapsed time: " << elapsed.count() << " s\n";
 }
 
+constexpr float8_t f8inf{
+        inf, inf, inf, inf, inf, inf, inf, inf
+};
+
+static inline float hmin8(float8_t vv) {
+    float v = inf;
+    for (int i = 0; i < 8; ++i) {
+        v = std::min(vv[i], v);
+    }
+    return v;
+}
+
 
 int main() {
-    constexpr int n = 2400;
+    constexpr int n = 4000;
 
     Matrix d(n, 0.f, true);
     // d.print();
 
     Matrix r(n);
     // r.print();
+    // step_trans_simd_omp(r.get_pdata(), d.get_pdata(), n);
 
-    measure_time("step_trans", [&]() {
-        step_trans(r.get_pdata(), d.get_pdata(), n);
-    });
-    // r.print();
+
+//    measure_time("step_trans", [&]() {
+//        step_trans(r.get_pdata(), d.get_pdata(), n);
+//    });
+//    // r.print();
 
     measure_time("step_trans_ilp_omp", [&]() {
         step_trans_ilp_omp(r.get_pdata(), d.get_pdata(), n);
     });
     // r.print();
+
+    measure_time("step_trans_simd_omp", [&]() {
+        step_trans_simd_omp(r.get_pdata(), d.get_pdata(), n);
+    });
+    // r.print();
+
 }
 
 void step_trans(float *r, const float *d, const size_t n) {
@@ -120,8 +139,42 @@ void step_trans_simd_omp(float *r, const float *d, const size_t n) {
     std::vector<float8_t> vd(n * blocks);
     std::vector<float8_t> vt(n * blocks);
 
+    // d:n*n  vd:n*(blocks*vec_len)
+#pragma omp parallel for
     for (size_t i = 0; i < n; ++i) {
-
+        for (size_t b_j = 0; b_j < blocks; ++b_j) {
+            for (size_t v_j = 0; v_j < vec_len; ++v_j) {
+                int j = b_j * vec_len + v_j;
+                vd[i * blocks + b_j][v_j] = j < n ? d[n * i + j] : inf;
+                vt[i * blocks + b_j][v_j] = j < n ? d[n * j + i] : inf;
+            }
+        }
+    }
+#pragma omp parallel for
+    for (size_t i = 0; i < n; ++i) {
+        for (size_t j = 0; j < n; ++j) {
+            float8_t vv = f8inf;
+            for (size_t k = 0; k < blocks; ++k) {
+                float8_t x = vd[blocks * i + k];
+                float8_t y = vd[blocks * j + k];
+                float8_t z = x + y;
+                vv = vv > z ? z : vv;
+            }
+            r[n * i + j] = hmin8(vv);
+        }
     }
 
+
 }
+
+// 测试是否转置正确
+//    for (size_t i = 0; i < n; ++i) {
+//        for (size_t b_j = 0; b_j < blocks; ++b_j) {
+//            for (size_t v_j = 0; v_j < vec_len; ++v_j) {
+////                std::cout << std::fixed << std::setw(6) << std::setprecision(2) << vd[i * blocks + b_j][v_j] << " ";
+//                std::cout << std::fixed << std::setw(6) << std::setprecision(2) << vt[i * blocks + b_j][v_j] << " ";
+//                // vt[i * blocks + b_j][v_j];
+//            }
+//        }
+//        std::cout << std::endl;
+//    }
